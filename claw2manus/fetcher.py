@@ -1,10 +1,12 @@
 import requests
 import os
 import re
+from bs4 import BeautifulSoup
 
 class SkillFetcher:
     CLAW_HUB_RAW_GITHUB_URL = "https://raw.githubusercontent.com/openclaw/skills/main/skills/{author}/{name}/SKILL.md"
     CLAW_HUB_WEBSITE_URL = "https://clawhub.ai/skills/{name}"
+    GITHUB_SEARCH_API_URL = "https://api.github.com/search/code?q=repo:openclaw/skills+filename:SKILL.md+path:skills/*/{name}"
 
     def fetch_skill_from_github(self, author: str, name: str) -> str | None:
         url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=author, name=name)
@@ -17,12 +19,45 @@ class SkillFetcher:
             return None
 
     def fetch_skill_from_clawhub_website(self, name: str) -> str | None:
-        # This is a placeholder. Scraping clawhub.ai would require a more sophisticated approach
-        # (e.g., using BeautifulSoup) and is prone to breaking if the website structure changes).
-        # For now, we will return None.
-        print(f"Scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=name)} is not fully implemented and may not work reliably.")
-        print("Please provide a direct URL or ensure the skill is available on GitHub.")
-        return None # Or implement actual scraping logic here
+        """Scrapes SKILL.md content from clawhub.ai."""
+        url = self.CLAW_HUB_WEBSITE_URL.format(name=name)
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Heuristic: find markdown content in common containers
+            content_element = soup.find(class_='markdown-body') or soup.find('article')
+            if content_element:
+                return content_element.get_text()
+            
+            # Fallback: look for any large pre/code block
+            code_block = soup.find('pre') or soup.find('code')
+            if code_block:
+                return code_block.get_text()
+
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"Error scraping from clawhub.ai: {e}")
+            return None
+
+    def discover_author_via_github(self, name: str) -> str | None:
+        """Uses GitHub Search API to find the author of a skill."""
+        url = self.GITHUB_SEARCH_API_URL.format(name=name)
+        headers = {"Accept": "application/vnd.github.v3+json"}
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("total_count", 0) > 0:
+                # Path format: skills/author/name/SKILL.md
+                path = data["items"][0]["path"]
+                match = re.search(r"skills/(?P<author>[^/]+)/", path)
+                if match:
+                    return match.group("author")
+        except Exception as e:
+            print(f"Error discovering author via GitHub: {e}")
+        return None
 
     def fetch_skill(self, skill_identifier: str) -> tuple[str | None, str | None]:
         """
@@ -63,7 +98,17 @@ class SkillFetcher:
                     skill_name = skill_identifier
                     return skill_content, skill_name
             
+            # Try to discover author via GitHub Search API
+            print(f"Author not specified for '{skill_identifier}'. Attempting to discover via GitHub API...")
+            discovered_author = self.discover_author_via_github(skill_identifier)
+            if discovered_author:
+                print(f"Discovered author: {discovered_author}")
+                skill_content = self.fetch_skill_from_github(discovered_author, skill_identifier)
+                if skill_content:
+                    return skill_content, skill_identifier
+
             # Fallback to scraping if GitHub fails and no author was specified
+            print(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier)}...")
             skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
             if skill_content:
                 skill_name = skill_identifier

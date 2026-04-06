@@ -40,12 +40,19 @@ class ManusSkillValidator:
         """Validates a complete Manus SKILL.md content and returns a list of errors."""
         errors = []
         try:
-            parts = skill_content.split('---\n', 2)
-            if len(parts) < 3:
+            # More robust splitting that handles various newline formats and trailing content
+            parts = re.split(r'^---\s*$', skill_content, maxsplit=2, flags=re.MULTILINE)
+            # print(f"DEBUG: parts length: {len(parts)}")
+            # for i, p in enumerate(parts):
+            #     print(f"DEBUG: part {i}: '{p}'")
+            # If it starts with ---, re.split will have an empty first element
+            if len(parts) > 2 and parts[0].strip() == "":
+                frontmatter_str = parts[1]
+                body = parts[2]
+            else:
                 errors.append("SKILL.md must have YAML frontmatter delimited by '---'.")
                 return errors
 
-            frontmatter_str = parts[1]
             frontmatter = yaml.safe_load(frontmatter_str)
 
             if not frontmatter:
@@ -65,6 +72,12 @@ class ManusSkillValidator:
             if not ManusSkillValidator.validate_frontmatter_fields(frontmatter):
                 unsupported_fields = set(frontmatter.keys()) - ManusSkillValidator.ALLOWED_FRONTMATTER_FIELDS
                 errors.append(f"Unsupported frontmatter fields found: {', '.join(unsupported_fields)}. Allowed: {', '.join(ManusSkillValidator.ALLOWED_FRONTMATTER_FIELDS)}.")
+
+            # New: Validate presence of required sections in body
+            required_sections = ["How To Use", "Prerequisites", "Usage"]
+            found_section = any(section.lower() in body.lower() for section in required_sections)
+            if not found_section:
+                 errors.append("Body missing a usage-related section (e.g., '## How To Use' or '## Prerequisites').")
 
         except yaml.YAMLError as e:
             errors.append(f"YAML parsing error in frontmatter: {e}")

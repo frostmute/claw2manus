@@ -1,68 +1,65 @@
 # claw2manus
 
-`claw2manus` is an open-source Python tool designed to bridge the gap between ClawHub (OpenClaw) skills and Manus-compatible skills. It automates the conversion of `SKILL.md` files, adapting their structure, content, and references to align with Manus platform requirements.
+`claw2manus` is an open-source Python tool designed to bridge the gap between ClawHub (OpenClaw) skills and Meta's Manus-compatible skills. It automates the conversion of `SKILL.md` files, adapting their structure, content, and references to align with Manus platform requirements.
 
-## Why claw2manus?
+## Features
 
-ClawHub boasts a rich ecosystem of over 8000 skills, offering a vast repository of AI capabilities. However, direct compatibility with Manus is limited due to differing `SKILL.md` formats, platform-specific references, and tool integrations. `claw2manus` addresses this by providing an automated, reliable way to transform ClawHub skills into a format readily usable within the Manus environment, unlocking a wealth of pre-built functionalities for Manus users.
+*   **Batch Conversion:** Convert entire directories of ClawHub skills with `convert-all`.
+*   **Automatic `soul.md` Generation:** Automatically converts `CLAUDE.md` to `soul.md` (the Manus behavioral pattern file).
+*   **Interactive Mode:** Manually resolve tool mappings during conversion using the `--interactive` flag.
+*   **Configuration-Driven Mapping:** Customize tool replacements and `stdio` patterns via `config.yaml`.
+*   **Smart Fetching:** Fetch skills directly from ClawHub/GitHub by name with automatic author discovery using the GitHub Search API.
+*   **Robust Scraping:** Fallback to scraping `clawhub.ai` when skills are not found on GitHub.
+*   **Detailed Reporting:** Generates a `CONVERSION_REPORT.md` for every conversion, listing changes and suggestions for manual adaptation.
+*   **Validation:** Built-in validator for Manus skill standards (naming, description length, and required sections).
 
 ## Installation
 
-To install `claw2manus`, clone the repository and install it using `pip`:
+To install `claw2manus`, clone the repository and install it using `uv` (recommended) or `pip`:
 
 ```bash
 git clone https://github.com/manus-ai/claw2manus.git
 cd claw2manus
-sudo pip3 install -e .
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 ```
-
-This will install the `claw2manus` command-line tool and its dependencies.
 
 ## Usage
 
-`claw2manus` provides a command-line interface with three main commands: `convert`, `fetch-and-convert`, and `validate`.
+`claw2manus` provides a command-line interface with four main commands: `convert`, `convert-all`, `fetch-and-convert`, and `validate`.
 
-### Convert from a Local File
+### Convert a Local File
 
-Convert a `SKILL.md` file from your local filesystem to a Manus-compatible format.
+Convert a `SKILL.md` file to a Manus-compatible format.
 
 ```bash
 claw2manus convert ./path/to/ClawHub/SKILL.md --output ./output/directory/
 ```
 
-**Example:**
+To enable interactive mode for tool mapping:
 
 ```bash
-claw2manus convert examples/input/pwnclaw-security-scan/SKILL.md --output examples/output/pwnclaw-security-scan/
+claw2manus convert ./path/to/ClawHub/SKILL.md --interactive
 ```
 
-To see the conversion report and the converted skill content without saving it to a file (dry run):
+### Batch Convert a Directory
+
+Convert all `SKILL.md` files found in a directory recursively.
 
 ```bash
-claw2manus convert ./path/to/ClawHub/SKILL.md --dry-run
+claw2manus convert-all ./skills/ --output ./manus-skills/
 ```
 
 ### Fetch from ClawHub and Convert
 
-Fetch a skill directly from ClawHub (or its GitHub repository) and convert it.
-
-You can specify the skill by its name (e.g., `pwnclaw-security-scan`) or a full GitHub raw URL.
+Fetch a skill by its name or full GitHub raw URL.
 
 ```bash
-claw2manus fetch-and-convert pwnclaw-security-scan --output ./output/directory/
+claw2manus fetch-and-convert pwnclaw-security-scan --output ./output/
 ```
 
-**Example (by name):**
-
-```bash
-claw2manus fetch-and-convert self-improving-agent --output examples/output/self-improving-agent/
-```
-
-**Example (by URL):**
-
-```bash
-claw2manus fetch-and-convert https://raw.githubusercontent.com/openclaw/skills/main/skills/peterskoett/self-improving-agent/SKILL.md --output examples/output/self-improving-agent/
-```
+The tool will automatically attempt to discover the correct author using the GitHub API.
 
 ### Validate an Existing Manus Skill
 
@@ -72,44 +69,13 @@ Validate a `SKILL.md` file against Manus skill requirements.
 claw2manus validate ./path/to/Manus/SKILL.md
 ```
 
-**Example:**
+## Documentation
 
-```bash
-claw2manus validate examples/output/pwnclaw-security-scan/SKILL.md
-```
+For more detailed information, see the following guides:
 
-## How the Conversion Works
-
-The `claw2manus` converter performs several key transformations:
-
-1.  **Frontmatter Transformation:**
-    *   **Name:** Ensures the skill name is hyphen-cased, lowercase, and within a maximum of 64 characters. Aggressive cleanup is applied if the initial conversion fails.
-    *   **Description:** Rewrites the description to explicitly include 
-    "what it does AND when to use it", limits it to 1024 characters, and removes any angle brackets.
-    *   **Field Filtering:** Removes any unsupported frontmatter fields, retaining only `name`, `description`, `license`, `allowed-tools`, and `metadata`.
-
-2.  **Body Transformation:**
-    *   **Path Replacement:** Replaces OpenClaw-specific paths (e.g., `~/.openclaw/workspace/`, `~/.openclaw/skills/`) with Manus equivalents (e.g., `/home/ubuntu/workspace/`, `/home/ubuntu/skills/`).
-    *   **Tool Mapping:** Replaces references to OpenClaw tools (e.g., `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`) with Manus-compatible instructions or flags them as incompatible, providing guidance for manual adaptation.
-    *   **Installation Commands:** Replaces `clawdhub install` and `openclaw hooks enable` commands with instructions relevant to Manus skill installation.
-    *   **File References:** Replaces references to `CLAUDE.md` with `soul.md` and `AGENTS.md` with Manus subtask concepts.
-    *   **Compatibility Notes:** Adds notes where direct 1:1 mapping is not possible, guiding the user on potential manual steps.
-
-3.  **Conversion Report Generation:**
-    *   Generates a detailed report listing all changes made during the conversion process and any manual steps that might be required for full compatibility.
-
-4.  **Validation:**
-    *   The converted skill is validated against Manus requirements for name format, description length, and allowed frontmatter fields.
-
-## Known Limitations
-
-*   **Scraping ClawHub.ai:** Direct scraping of `clawhub.ai` is not fully robust and may break if the website structure changes. Fetching from GitHub raw URLs is more reliable.
-*   **stdio-only Tools:** Detection of `stdio`-only tools is heuristic and may not be exhaustive. Skills relying heavily on interactive `stdio` tools might require further manual adaptation or MCP bridging for full Manus compatibility.
-*   **Complex Integrations:** Skills with deep, custom integrations with OpenClaw-specific APIs or complex multi-agent communication patterns might require significant manual refactoring.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues on the GitHub repository.
+*   [Conversion Logic Overview](docs/CONVERSION.md)
+*   [Configuration Guide](docs/CONFIGURATION.md)
+*   [Development Guide](docs/DEVELOPMENT.md)
 
 ## License
 

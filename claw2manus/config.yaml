@@ -1,0 +1,19 @@
+tool_replacements:
+  sessions_list: "Manus: Use `shell` tool with `ps aux` or similar to list processes, or `gws` to list Google Workspace sessions."
+  sessions_history: "Manus: Session history is managed by the agent. Direct access to other session's history is not supported."
+  sessions_send: "Manus: Inter-agent communication is not directly supported via a 'send' tool. Consider using shared files or a message queue."
+  sessions_spawn: "Manus: To spawn sub-agents, define a new phase in the plan or use parallel processing for homogeneous tasks."
+
+stdio_patterns:
+  - pattern: '(\b(?:python|node|ruby|perl|php|java|go|bash|sh|zsh)\b\s+.*?\.py)'
+    category: "Script execution"
+    mcp_suggestion: "Check if this can be handled via standard `shell` or if a dedicated MCP bridge is needed."
+  - pattern: '(\b(?:cat|less|more|tail|head|grep|awk|sed)\b)'
+    category: "Text processing utilities"
+    mcp_suggestion: "Standard `shell` tools are usually sufficient."
+  - pattern: '(\b(?:ssh|ftp|sftp|scp)\b)'
+    category: "Remote access"
+    mcp_suggestion: "Consider using an MCP bridge for remote protocol management or using the `shell` tool."
+  - pattern: '(\b(?:psql|mysql|sqlite3|mongo|redis-cli)\b)'
+    category: "Database clients"
+    mcp_suggestion: "Strongly recommend using an MCP server (e.g., `mcp-server-postgres`, `mcp-server-mysql`) for secure and structured database access."

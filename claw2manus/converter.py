@@ -1,10 +1,32 @@
 import re
 import yaml
+import os
 from claw2manus.validators import ManusSkillValidator
 
 class SkillConverter:
-    def __init__(self):
+    def __init__(self, config_path: str = None):
         self.report = []
+        self.config = self._load_config(config_path)
+
+    def _load_config(self, config_path: str) -> dict:
+        default_config = {
+            "tool_replacements": {},
+            "stdio_patterns": []
+        }
+        
+        if config_path is None:
+            # Look for config.yaml in the same directory as this file
+            config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    config = yaml.safe_load(f)
+                    return config if config else default_config
+            except Exception as e:
+                print(f"Error loading config from {config_path}: {e}")
+        
+        return default_config
 
     def _log_change(self, message: str):
         self.report.append(message)
@@ -17,35 +39,35 @@ class SkillConverter:
         name = frontmatter.get("name", "").lower().replace(" ", "-")
         if len(name) > ManusSkillValidator.MAX_NAME_LENGTH:
             name = name[:ManusSkillValidator.MAX_NAME_LENGTH]
-            self._log_change(f"Truncated skill name from \'{original_name}\' to \'{name}\' (max {ManusSkillValidator.MAX_NAME_LENGTH} chars).")
+            self._log_change(f"Truncated skill name from '{original_name}' to '{name}' (max {ManusSkillValidator.MAX_NAME_LENGTH} chars).")
         if not ManusSkillValidator.validate_name(name):
             # Attempt a more aggressive cleanup if initial conversion fails
             name = re.sub(r'[^a-z0-9-]+', '', name)
             name = re.sub(r'--+', '-', name).strip('-')
             if len(name) > ManusSkillValidator.MAX_NAME_LENGTH:
                 name = name[:ManusSkillValidator.MAX_NAME_LENGTH]
-            self._log_change(f"Cleaned up skill name from \'{original_name}\' to \'{name}\' for Manus compatibility.")
+            self._log_change(f"Cleaned up skill name from '{original_name}' to '{name}' for Manus compatibility.")
         transformed["name"] = name
 
         # 2. Description transformation
         description = frontmatter.get("description", "")
         if not description:
             description = f"A skill derived from ClawHub. Original name: {original_name}. Please update this description."
-            self._log_change(f"Generated placeholder description for skill \'{original_name}\' as it was missing.")
+            self._log_change(f"Generated placeholder description for skill '{original_name}' as it was missing.")
         
         # Ensure description includes "what it does AND when to use it"
         if "what it does" not in description.lower() and "when to use it" not in description.lower():
             description = f"What it does: {description}. When to use it: This is a converted skill from ClawHub, review its content for usage instructions."
-            self._log_change(f"Enhanced description for skill \'{original_name}\' to include 'what it does' and 'when to use it'.")
+            self._log_change(f"Enhanced description for skill '{original_name}' to include 'what it does' and 'when to use it'.")
 
         # Remove angle brackets
         if ">" in description or "<" in description:
             description = description.replace(">", "").replace("<", "")
-            self._log_change(f"Removed angle brackets from description for skill \'{original_name}\' to comply with Manus format.")
+            self._log_change(f"Removed angle brackets from description for skill '{original_name}' to comply with Manus format.")
 
         if len(description) > ManusSkillValidator.MAX_DESCRIPTION_LENGTH:
             description = description[:ManusSkillValidator.MAX_DESCRIPTION_LENGTH - 3] + "..."
-            self._log_change(f"Truncated description for skill \'{original_name}\' (max {ManusSkillValidator.MAX_DESCRIPTION_LENGTH} chars).")
+            self._log_change(f"Truncated description for skill '{original_name}' (max {ManusSkillValidator.MAX_DESCRIPTION_LENGTH} chars).")
         transformed["description"] = description
 
         # 3. Keep only allowed fields
@@ -55,32 +77,31 @@ class SkillConverter:
         
         unsupported_fields = set(frontmatter.keys()) - ManusSkillValidator.ALLOWED_FRONTMATTER_FIELDS
         if unsupported_fields:
-            self._log_change(f"Removed unsupported frontmatter fields for skill \'{original_name}\': {', '.join(unsupported_fields)}.")
+            self._log_change(f"Removed unsupported frontmatter fields for skill '{original_name}': {', '.join(unsupported_fields)}.")
 
         return transformed
 
-    def _transform_body(self, body: str) -> str:
+    def _transform_body(self, body: str, interactive: bool = False, on_unresolved_tool=None) -> str:
         transformed_body = body
 
         # Replace OpenClaw-specific paths
-        transformed_body = re.sub(r"~/.openclaw/workspace/", "/home/ubuntu/workspace/", transformed_body)
-        if "~/.openclaw/workspace/" in body:
+        if "~/.openclaw/workspace/" in transformed_body:
+            transformed_body = transformed_body.replace("~/.openclaw/workspace/", "/home/ubuntu/workspace/")
             self._log_change("Replaced ~/.openclaw/workspace/ with /home/ubuntu/workspace/.")
-        transformed_body = re.sub(r"~/.openclaw/skills/", "/home/ubuntu/skills/", transformed_body)
-        if "~/.openclaw/skills/" in body:
+        if "~/.openclaw/skills/" in transformed_body:
+            transformed_body = transformed_body.replace("~/.openclaw/skills/", "/home/ubuntu/skills/")
             self._log_change("Replaced ~/.openclaw/skills/ with /home/ubuntu/skills/.")
 
         # Replace OpenClaw tool references with Manus equivalents or flag as incompatible
-        tool_replacements = {
-            "sessions_list": "Manus: Use `shell` tool with `ps aux` or similar to list processes, or `gws` to list Google Workspace sessions.",
-            "sessions_history": "Manus: Session history is managed by the agent. Direct access to other session's history is not supported.",
-            "sessions_send": "Manus: Inter-agent communication is not directly supported via a 'send' tool. Consider using shared files or a message queue.",
-            "sessions_spawn": "Manus: To spawn sub-agents, define a new phase in the plan or use parallel processing for homogeneous tasks."
-        }
-        for old_tool, new_instruction in tool_replacements.items():
+        tool_replacements = self.config.get("tool_replacements", {})
+        for old_tool, default_instruction in tool_replacements.items():
             if old_tool in transformed_body:
-                transformed_body = transformed_body.replace(old_tool, new_instruction)
-                self._log_change(f"Replaced OpenClaw tool \'{old_tool}\' with Manus instruction: {new_instruction}")
+                instruction = default_instruction
+                if interactive and on_unresolved_tool:
+                    instruction = on_unresolved_tool(old_tool, default_instruction)
+                
+                transformed_body = transformed_body.replace(old_tool, instruction)
+                self._log_change(f"Replaced OpenClaw tool '{old_tool}' with Manus instruction: {instruction}")
 
         # Replace clawdhub/openclaw install commands with Manus skill upload instructions
         if "clawdhub install" in transformed_body or "openclaw hooks enable" in transformed_body:
@@ -99,16 +120,18 @@ class SkillConverter:
             self._log_change("Replaced AGENTS.md with Manus subtask concepts.")
 
         # Flag any stdio-only tools that would need MCP bridging
-        # This is a heuristic, as we don't know all stdio-only tools. We'll look for common patterns.
-        stdio_patterns = [
-            r"((?:python|node|ruby|perl|php|java|go|bash|sh|zsh)\s+.*?\.py)", # Script execution
-            r"((?:cat|less|more|tail|head|grep|awk|sed))", # Text processing utilities
-            r"((?:ssh|ftp|sftp|scp))" # Remote access
-        ]
-        for pattern in stdio_patterns:
-            if re.search(pattern, transformed_body, re.IGNORECASE):
-                self._log_change(f"Potential stdio-only tool detected (pattern: {pattern}). May require MCP bridging for full Manus compatibility.")
-                break # Log only once per body for this category
+        stdio_patterns = self.config.get("stdio_patterns", [])
+        categories_logged = set()
+        for item in stdio_patterns:
+            pattern = item.get("pattern")
+            category = item.get("category", "General")
+            if category in categories_logged:
+                continue
+            
+            if pattern and re.search(pattern, transformed_body, re.IGNORECASE):
+                suggestion = item.get("mcp_suggestion", "Check if an MCP bridge is available.")
+                self._log_change(f"Potential stdio-only tool detected ({category}) (pattern: {pattern}). {suggestion}")
+                categories_logged.add(category)
 
         # Add compatibility notes where 1:1 mapping isn't possible
         if "OpenClaw workspace" in transformed_body:
@@ -116,25 +139,26 @@ class SkillConverter:
 
         return transformed_body
 
-    def convert(self, clawhub_skill_content: str) -> tuple[str, list[str]]:
+    def convert(self, clawhub_skill_content: str, interactive: bool = False, on_unresolved_tool=None) -> tuple[str, list[str]]:
         self.report = []
         
-        parts = clawhub_skill_content.split("---\n", 2)
-        if len(parts) < 3:
+        # Robust splitting
+        parts = re.split(r'^---\s*$', clawhub_skill_content, maxsplit=2, flags=re.MULTILINE)
+        if len(parts) > 2 and parts[0].strip() == "":
+            frontmatter_str = parts[1]
+            body = parts[2]
+        else:
             self._log_change("Input SKILL.md does not have valid YAML frontmatter delimiters.")
-            return clawhub_skill_content, self.report # Return original content if parsing fails
-
-        frontmatter_str = parts[1]
-        body = parts[2]
+            return clawhub_skill_content, self.report 
 
         try:
             frontmatter = yaml.safe_load(frontmatter_str)
         except yaml.YAMLError as e:
             self._log_change(f"YAML parsing error in frontmatter: {e}")
-            return clawhub_skill_content, self.report # Return original content if parsing fails
+            return clawhub_skill_content, self.report 
 
         transformed_frontmatter = self._transform_frontmatter(frontmatter)
-        transformed_body = self._transform_body(body)
+        transformed_body = self._transform_body(body, interactive, on_unresolved_tool)
 
         # Reconstruct the Manus SKILL.md
         manus_skill_content = "---\n" + \
@@ -151,5 +175,3 @@ class SkillConverter:
             self._log_change("-------------------------------")
 
         return manus_skill_content, self.report
-
-
