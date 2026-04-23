@@ -1,7 +1,10 @@
 import re
 import yaml
 import os
+import logging
 from claw2manus.validators import ManusSkillValidator
+
+logger = logging.getLogger(__name__)
 
 class SkillConverter:
     def __init__(self, config_path: str = None):
@@ -24,7 +27,7 @@ class SkillConverter:
                     config = yaml.safe_load(f)
                     return config if config else default_config
             except Exception as e:
-                print(f"Error loading config from {config_path}: {e}")
+                logger.error(f"Error loading config from {config_path}: {e}")
         
         return default_config
 
