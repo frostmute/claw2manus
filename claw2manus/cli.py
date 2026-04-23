@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import glob
+import logging
 from claw2manus.converter import SkillConverter
 from claw2manus.fetcher import SkillFetcher
 from claw2manus.validators import ManusSkillValidator
@@ -164,6 +165,7 @@ def validate_skill(skill_path: str):
         print(f"\nSkill {skill_path} is valid according to Manus requirements.")
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     parser = argparse.ArgumentParser(description="Convert ClawHub SKILL.md to Manus-compatible skills.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 

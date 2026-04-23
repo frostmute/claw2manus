@@ -1,7 +1,10 @@
 import requests
 import os
 import re
+import logging
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 class SkillFetcher:
     CLAW_HUB_RAW_GITHUB_URL = "https://raw.githubusercontent.com/openclaw/skills/main/skills/{author}/{name}/SKILL.md"
@@ -15,7 +18,7 @@ class SkillFetcher:
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.text
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching from GitHub: {e}")
+            logger.error(f"Error fetching from GitHub: {e}")
             return None
 
     def fetch_skill_from_clawhub_website(self, name: str) -> str | None:
@@ -38,7 +41,7 @@ class SkillFetcher:
 
             return None
         except requests.exceptions.RequestException as e:
-            print(f"Error scraping from clawhub.ai: {e}")
+            logger.error(f"Error scraping from clawhub.ai: {e}")
             return None
 
     def discover_author_via_github(self, name: str) -> str | None:
@@ -56,7 +59,7 @@ class SkillFetcher:
                 if match:
                     return match.group("author")
         except Exception as e:
-            print(f"Error discovering author via GitHub: {e}")
+            logger.error(f"Error discovering author via GitHub: {e}")
         return None
 
     def fetch_skill(self, skill_identifier: str) -> tuple[str | None, str | None]:
@@ -99,16 +102,16 @@ class SkillFetcher:
                     return skill_content, skill_name
             
             # Try to discover author via GitHub Search API
-            print(f"Author not specified for '{skill_identifier}'. Attempting to discover via GitHub API...")
+            logger.info(f"Author not specified for '{skill_identifier}'. Attempting to discover via GitHub API...")
             discovered_author = self.discover_author_via_github(skill_identifier)
             if discovered_author:
-                print(f"Discovered author: {discovered_author}")
+                logger.info(f"Discovered author: {discovered_author}")
                 skill_content = self.fetch_skill_from_github(discovered_author, skill_identifier)
                 if skill_content:
                     return skill_content, skill_identifier
 
             # Fallback to scraping if GitHub fails and no author was specified
-            print(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier)}...")
+            logger.info(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier)}...")
             skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
             if skill_content:
                 skill_name = skill_identifier
