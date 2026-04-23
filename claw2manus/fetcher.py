@@ -11,7 +11,7 @@ class SkillFetcher:
     def fetch_skill_from_github(self, author: str, name: str) -> str | None:
         url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=author, name=name)
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.text
         except requests.exceptions.RequestException as e:
@@ -22,7 +22,7 @@ class SkillFetcher:
         """Scrapes SKILL.md content from clawhub.ai."""
         url = self.CLAW_HUB_WEBSITE_URL.format(name=name)
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
@@ -46,7 +46,7 @@ class SkillFetcher:
         url = self.GITHUB_SEARCH_API_URL.format(name=name)
         headers = {"Accept": "application/vnd.github.v3+json"}
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             if data.get("total_count", 0) > 0:
