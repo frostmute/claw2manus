@@ -48,3 +48,7 @@ htmlcov/
 converted_skills/
 test_fetch_output/
 .kilocode/
+
+benchmark_input/
+benchmark_output/
+benchmark.py
