@@ -1,6 +1,7 @@
 import requests
 import os
 import re
+import urllib.parse
 from bs4 import BeautifulSoup
 
 class SkillFetcher:
@@ -9,7 +10,9 @@ class SkillFetcher:
     GITHUB_SEARCH_API_URL = "https://api.github.com/search/code?q=repo:openclaw/skills+filename:SKILL.md+path:skills/*/{name}"
 
     def fetch_skill_from_github(self, author: str, name: str) -> str | None:
-        url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=author, name=name)
+        quoted_author = urllib.parse.quote(author, safe='')
+        quoted_name = urllib.parse.quote(name, safe='')
+        url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=quoted_author, name=quoted_name)
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise an exception for HTTP errors
@@ -20,7 +23,8 @@ class SkillFetcher:
 
     def fetch_skill_from_clawhub_website(self, name: str) -> str | None:
         """Scrapes SKILL.md content from clawhub.ai."""
-        url = self.CLAW_HUB_WEBSITE_URL.format(name=name)
+        quoted_name = urllib.parse.quote(name, safe='')
+        url = self.CLAW_HUB_WEBSITE_URL.format(name=quoted_name)
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -43,7 +47,8 @@ class SkillFetcher:
 
     def discover_author_via_github(self, name: str) -> str | None:
         """Uses GitHub Search API to find the author of a skill."""
-        url = self.GITHUB_SEARCH_API_URL.format(name=name)
+        quoted_name = urllib.parse.quote(name, safe='')
+        url = self.GITHUB_SEARCH_API_URL.format(name=quoted_name)
         headers = {"Accept": "application/vnd.github.v3+json"}
         try:
             response = requests.get(url, headers=headers)
@@ -108,7 +113,8 @@ class SkillFetcher:
                     return skill_content, skill_identifier
 
             # Fallback to scraping if GitHub fails and no author was specified
-            print(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier)}...")
+            quoted_skill_identifier = urllib.parse.quote(skill_identifier, safe='')
+            print(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=quoted_skill_identifier)}...")
             skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
             if skill_content:
                 skill_name = skill_identifier
