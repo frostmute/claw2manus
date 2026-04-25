@@ -12,6 +12,15 @@ def on_unresolved_tool_cli(tool_name, default_instruction):
     user_input = input("Enter custom instruction (or press Enter to use default): ").strip()
     return user_input if user_input else default_instruction
 
+def _print_conversion_report(report):
+    print("\n--- Conversion Report ---")
+    if report:
+        for item in report:
+            print(f"- {item}")
+    else:
+        print("No specific changes noted during conversion.")
+    print("-------------------------")
+
 def save_conversion_results(output_dir, skill_name, content, report, original_path=None):
     os.makedirs(output_dir, exist_ok=True)
     
@@ -53,13 +62,7 @@ def convert_skill(input_path: str, output_dir: str, dry_run: bool, interactive: 
         on_unresolved_tool=on_unresolved_tool_cli if interactive else None
     )
 
-    print("\n--- Conversion Report ---")
-    if report:
-        for item in report:
-            print(f"- {item}")
-    else:
-        print("No specific changes noted during conversion.")
-    print("-------------------------")
+    _print_conversion_report(report)
 
     if not dry_run:
         # derive skill name from directory or file name
@@ -126,13 +129,7 @@ def fetch_and_convert_skill(skill_identifier: str, output_dir: str, interactive:
         on_unresolved_tool=on_unresolved_tool_cli if interactive else None
     )
 
-    print("\n--- Conversion Report ---")
-    if report:
-        for item in report:
-            print(f"- {item}")
-    else:
-        print("No specific changes noted during conversion.")
-    print("-------------------------")
+    _print_conversion_report(report)
 
     output_skill_dir = os.path.join(output_dir, skill_name)
     save_conversion_results(output_skill_dir, skill_name, manus_skill_content, report)
