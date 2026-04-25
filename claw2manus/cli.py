@@ -44,6 +44,7 @@ def save_conversion_results(output_dir, skill_name, content, report, original_pa
 def convert_skill(input_path: str, output_dir: str, dry_run: bool, interactive: bool = False):
     converter = SkillConverter()
     
+
     with open(input_path, "r") as f:
         clawhub_skill_content = f.read()
 
@@ -85,11 +86,12 @@ def convert_all_skills(input_dir: str, output_dir: str, interactive: bool = Fals
 
     print(f"Found {len(skill_files)} skills to convert.")
     
+    converter = SkillConverter()
     for skill_file in skill_files:
         print(f"\nProcessing: {skill_file}")
         skill_name = os.path.basename(os.path.dirname(skill_file))
         
-        converter = SkillConverter()
+
         with open(skill_file, "r") as f:
             content = f.read()
         
@@ -104,8 +106,9 @@ def convert_all_skills(input_dir: str, output_dir: str, interactive: bool = Fals
         print(f"Converted {skill_name} to {output_skill_dir}")
 
 def fetch_and_convert_skill(skill_identifier: str, output_dir: str, interactive: bool = False):
-    fetcher = SkillFetcher()
     converter = SkillConverter()
+    fetcher = SkillFetcher()
+
 
     print(f"Attempting to fetch skill: {skill_identifier}")
     clawhub_skill_content, skill_name = fetcher.fetch_skill(skill_identifier)
