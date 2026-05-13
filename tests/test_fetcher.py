@@ -2,9 +2,8 @@ import urllib.parse
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
-from claw2manus.fetcher import SkillFetcher, _quote_path_segment
+from claw2manus.fetcher import RequestException, SkillFetcher, _quote_path_segment
 
 
 # --- Escaping / injection tests (from original PR) ---
@@ -66,6 +65,40 @@ def test_discover_author_via_github_escaping():
         assert kwargs["timeout"] == (3.05, 10)
 
 
+def test_raw_github_url_from_nested_raw_path():
+    fetcher = SkillFetcher()
+    raw_url = (
+        "https://raw.githubusercontent.com/Xquik-dev/tweetclaw/master/"
+        "skills/tweetclaw/SKILL.md"
+    )
+
+    assert fetcher._raw_github_url_from_identifier(raw_url) == (raw_url, "tweetclaw")
+
+
+def test_raw_github_url_from_blob_path():
+    fetcher = SkillFetcher()
+
+    assert fetcher._raw_github_url_from_identifier(
+        "https://github.com/Xquik-dev/tweetclaw/blob/master/skills/tweetclaw/SKILL.md"
+    ) == (
+        "https://raw.githubusercontent.com/Xquik-dev/tweetclaw/master/skills/tweetclaw/SKILL.md",
+        "tweetclaw",
+    )
+
+
+def test_raw_github_url_from_blob_path_quotes_segments():
+    fetcher = SkillFetcher()
+
+    assert fetcher._raw_github_url_from_identifier(
+        "https://github.com/org name/repo/blob/main/skills/tweet claw/SKILL.md"
+    ) == (
+        "https://raw.githubusercontent.com/"
+        f"{urllib.parse.quote('org name', safe='')}/repo/main/skills/"
+        f"{urllib.parse.quote('tweet claw', safe='')}/SKILL.md",
+        "tweet claw",
+    )
+
+
 # --- Functional tests ---
 
 
@@ -89,9 +122,34 @@ def test_fetch_skill_from_github_success():
 def test_fetch_skill_from_github_failure():
     fetcher = SkillFetcher()
     with patch("claw2manus.fetcher.requests.get") as mock_get:
-        mock_get.side_effect = requests.exceptions.RequestException("Network error")
+        mock_get.side_effect = RequestException("Network error")
 
         content = fetcher.fetch_skill_from_github("author1", "skill1")
+        assert content is None
+
+
+def test_fetch_skill_from_raw_github_url_success():
+    fetcher = SkillFetcher()
+    raw_url = "https://raw.githubusercontent.com/org/repo/main/skills/demo/SKILL.md"
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "raw skill content"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        content = fetcher.fetch_skill_from_raw_github_url(raw_url)
+        assert content == "raw skill content"
+        mock_get.assert_called_once_with(raw_url, timeout=(3.05, 10))
+
+
+def test_fetch_skill_from_raw_github_url_failure():
+    fetcher = SkillFetcher()
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_get.side_effect = RequestException("Network error")
+
+        content = fetcher.fetch_skill_from_raw_github_url(
+            "https://raw.githubusercontent.com/org/repo/main/skills/demo/SKILL.md"
+        )
         assert content is None
 
 
@@ -144,7 +202,7 @@ def test_fetch_skill_from_clawhub_website_success_code(mock_bs):
 def test_fetch_skill_from_clawhub_website_failure():
     fetcher = SkillFetcher()
     with patch("claw2manus.fetcher.requests.get") as mock_get:
-        mock_get.side_effect = requests.exceptions.RequestException("Network error")
+        mock_get.side_effect = RequestException("Network error")
 
         content = fetcher.fetch_skill_from_clawhub_website("skill1")
         assert content is None
@@ -195,15 +253,81 @@ def test_discover_author_via_github_exception():
 
 def test_fetch_skill_with_github_url():
     fetcher = SkillFetcher()
+    raw_url = (
+        "https://raw.githubusercontent.com/openclaw/skills/main/skills/author3/"
+        "skill3/SKILL.md"
+    )
     with patch.object(
-        fetcher, "fetch_skill_from_github", return_value="github content"
+        fetcher, "fetch_skill_from_raw_github_url", return_value="github content"
     ) as mock_fetch:
-        content, name = fetcher.fetch_skill(
-            "https://raw.githubusercontent.com/openclaw/skills/main/skills/author3/skill3/SKILL.md"
-        )
+        content, name = fetcher.fetch_skill(raw_url)
         assert content == "github content"
         assert name == "skill3"
-        mock_fetch.assert_called_once_with("author3", "skill3")
+        mock_fetch.assert_called_once_with(raw_url)
+
+
+def test_fetch_skill_with_nested_raw_github_url():
+    fetcher = SkillFetcher()
+    raw_url = (
+        "https://raw.githubusercontent.com/Xquik-dev/tweetclaw/master/"
+        "skills/tweetclaw/SKILL.md"
+    )
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "---\nname: tweetclaw\n---\n# TweetClaw"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        content, skill_name = fetcher.fetch_skill(raw_url)
+
+        assert content == "---\nname: tweetclaw\n---\n# TweetClaw"
+        assert skill_name == "tweetclaw"
+        mock_get.assert_called_once_with(raw_url, timeout=(3.05, 10))
+
+
+def test_fetch_skill_converts_github_blob_url_to_raw():
+    fetcher = SkillFetcher()
+    raw_url = (
+        "https://raw.githubusercontent.com/Xquik-dev/tweetclaw/master/"
+        "skills/tweetclaw/SKILL.md"
+    )
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "---\nname: tweetclaw\n---\n# TweetClaw"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        content, skill_name = fetcher.fetch_skill(
+            "https://github.com/Xquik-dev/tweetclaw/blob/master/"
+            "skills/tweetclaw/SKILL.md",
+        )
+
+        assert content == "---\nname: tweetclaw\n---\n# TweetClaw"
+        assert skill_name == "tweetclaw"
+        mock_get.assert_called_once_with(raw_url, timeout=(3.05, 10))
+
+
+def test_fetch_skill_github_url_failure_does_not_fall_through():
+    fetcher = SkillFetcher()
+    raw_url = (
+        "https://raw.githubusercontent.com/Xquik-dev/tweetclaw/master/"
+        "skills/tweetclaw/SKILL.md"
+    )
+    with (
+        patch.object(
+            fetcher, "fetch_skill_from_raw_github_url", return_value=None
+        ) as mock_raw,
+        patch.object(fetcher, "fetch_skill_from_github") as mock_github,
+    ):
+        content, skill_name = fetcher.fetch_skill(
+            "https://github.com/Xquik-dev/tweetclaw/blob/master/"
+            "skills/tweetclaw/SKILL.md",
+        )
+
+        assert content is None
+        assert skill_name is None
+        mock_raw.assert_called_once_with(raw_url)
+        mock_github.assert_not_called()
 
 
 def test_fetch_skill_with_author_and_name():
