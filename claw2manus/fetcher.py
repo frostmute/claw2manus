@@ -1,12 +1,53 @@
+from __future__ import annotations
+
 import requests
 import os
 import re
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 class SkillFetcher:
     CLAW_HUB_RAW_GITHUB_URL = "https://raw.githubusercontent.com/openclaw/skills/main/skills/{author}/{name}/SKILL.md"
     CLAW_HUB_WEBSITE_URL = "https://clawhub.ai/skills/{name}"
     GITHUB_SEARCH_API_URL = "https://api.github.com/search/code?q=repo:openclaw/skills+filename:SKILL.md+path:skills/*/{name}"
+
+    def _skill_name_from_path(self, path: str) -> str | None:
+        parts = [part for part in path.split("/") if part]
+        if not parts or parts[-1].lower() != "skill.md":
+            return None
+        if len(parts) >= 2:
+            return parts[-2]
+        return None
+
+    def _raw_github_url_from_identifier(self, skill_identifier: str) -> tuple[str, str] | None:
+        parsed = urlparse(skill_identifier)
+        path_parts = [part for part in parsed.path.split("/") if part]
+
+        if parsed.netloc == "raw.githubusercontent.com" and len(path_parts) >= 5:
+            skill_name = self._skill_name_from_path("/".join(path_parts[3:]))
+            if skill_name:
+                return skill_identifier, skill_name
+
+        if parsed.netloc in {"github.com", "www.github.com"} and len(path_parts) >= 5:
+            owner, repo, marker, ref, *skill_path = path_parts
+            if marker != "blob":
+                return None
+            skill_name = self._skill_name_from_path("/".join(skill_path))
+            if not skill_name:
+                return None
+            raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{'/'.join(skill_path)}"
+            return raw_url, skill_name
+
+        return None
+
+    def fetch_skill_from_raw_github_url(self, url: str) -> str | None:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching raw GitHub skill: {e}")
+            return None
 
     def fetch_skill_from_github(self, author: str, name: str) -> str | None:
         url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=author, name=name)
@@ -68,14 +109,14 @@ class SkillFetcher:
         skill_name = None
 
         # Try to parse as a GitHub URL first
-        if "github.com" in skill_identifier and "SKILL.md" in skill_identifier:
-            # Example: https://raw.githubusercontent.com/openclaw/skills/main/skills/peterskoett/self-improving-agent/SKILL.md
-            match = re.search(r"skills/(?P<author>[^/]+)/(?P<name>[^/]+)/SKILL.md", skill_identifier)
-            if match:
-                author = match.group("author")
-                name = match.group("name")
-                skill_content = self.fetch_skill_from_github(author, name)
-                skill_name = name
+        if (
+            ("github.com" in skill_identifier or "githubusercontent.com" in skill_identifier)
+            and "skill.md" in skill_identifier.lower()
+        ):
+            github_target = self._raw_github_url_from_identifier(skill_identifier)
+            if github_target:
+                raw_url, skill_name = github_target
+                skill_content = self.fetch_skill_from_raw_github_url(raw_url)
                 if skill_content:
                     return skill_content, skill_name
 
