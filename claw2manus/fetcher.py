@@ -59,7 +59,7 @@ class SkillFetcher:
                 if match:
                     return match.group("author")
         except Exception as e:
-            logger.error(f"Error discovering author via GitHub: {e}")
+            logger.exception("Error discovering author via GitHub")
         return None
 
     def fetch_skill(self, skill_identifier: str) -> tuple[str | None, str | None]:
