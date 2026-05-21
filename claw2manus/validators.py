@@ -42,9 +42,6 @@ class ManusSkillValidator:
         try:
             # More robust splitting that handles various newline formats and trailing content
             parts = re.split(r'^---\s*$', skill_content, maxsplit=2, flags=re.MULTILINE)
-            # print(f"DEBUG: parts length: {len(parts)}")
-            # for i, p in enumerate(parts):
-            #     print(f"DEBUG: part {i}: '{p}'")
             # If it starts with ---, re.split will have an empty first element
             if len(parts) > 2 and parts[0].strip() == "":
                 frontmatter_str = parts[1]
