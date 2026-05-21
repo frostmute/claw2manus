@@ -111,7 +111,7 @@ class SkillFetcher:
                     return skill_content, skill_identifier
 
             # Fallback to scraping if GitHub fails and no author was specified
-            logger.info(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier)}...")
+            logger.info("Falling back to scraping from %s...", self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier))
             skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
             if skill_content:
                 skill_name = skill_identifier
