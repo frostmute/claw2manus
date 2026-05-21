@@ -41,7 +41,7 @@ class SkillFetcher:
 
             return None
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error scraping from clawhub.ai: {e}")
+            logger.exception("Error scraping from clawhub.ai")
             return None
 
     def discover_author_via_github(self, name: str) -> str | None:
