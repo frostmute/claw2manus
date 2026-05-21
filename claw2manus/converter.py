@@ -27,7 +27,7 @@ class SkillConverter:
                     config = yaml.safe_load(f)
                     return config if config else default_config
             except Exception as e:
-                logger.error(f"Error loading config from {config_path}: {e}")
+                logger.exception("Error loading config from %s", config_path)
         
         return default_config
 
