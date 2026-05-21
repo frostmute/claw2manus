@@ -46,7 +46,7 @@ class SkillFetcher:
         url = self.GITHUB_SEARCH_API_URL.format(name=name)
         headers = {"Accept": "application/vnd.github.v3+json"}
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers={**headers, "User-Agent": "claw2manus"}, timeout=(3.05, 10))
             response.raise_for_status()
             data = response.json()
             if data.get("total_count", 0) > 0:
