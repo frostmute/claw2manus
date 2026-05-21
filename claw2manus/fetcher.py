@@ -11,7 +11,7 @@ class SkillFetcher:
     def fetch_skill_from_github(self, author: str, name: str) -> str | None:
         url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=author, name=name)
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=(3.05, 10))
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.text
         except requests.exceptions.RequestException as e:
