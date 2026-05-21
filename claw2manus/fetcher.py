@@ -22,7 +22,7 @@ class SkillFetcher:
         """Scrapes SKILL.md content from clawhub.ai."""
         url = self.CLAW_HUB_WEBSITE_URL.format(name=name)
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=(3.05, 10))
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
