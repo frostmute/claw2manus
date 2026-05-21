@@ -105,7 +105,7 @@ class SkillFetcher:
             logger.info("Author not specified for '%s'. Attempting to discover via GitHub API...", skill_identifier)
             discovered_author = self.discover_author_via_github(skill_identifier)
             if discovered_author:
-                logger.info(f"Discovered author: {discovered_author}")
+                logger.info("Discovered author: %s", discovered_author)
                 skill_content = self.fetch_skill_from_github(discovered_author, skill_identifier)
                 if skill_content:
                     return skill_content, skill_identifier
