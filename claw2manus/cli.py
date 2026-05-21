@@ -12,7 +12,7 @@ def on_unresolved_tool_cli(tool_name, default_instruction):
     user_input = input("Enter custom instruction (or press Enter to use default): ").strip()
     return user_input if user_input else default_instruction
 
-def _print_conversion_report(report):
+def _print_conversion_report(report: list[str]) -> None:
     print("\n--- Conversion Report ---")
     if report:
         for item in report:
