@@ -18,7 +18,7 @@ class SkillFetcher:
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.text
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching from GitHub: {e}")
+            logger.exception("Error fetching from GitHub")
             return None
 
     def fetch_skill_from_clawhub_website(self, name: str) -> str | None:
