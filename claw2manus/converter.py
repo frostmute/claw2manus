@@ -1,7 +1,10 @@
 import re
 import yaml
 import os
+import logging
 from claw2manus.validators import ManusSkillValidator
+
+logger = logging.getLogger(__name__)
 
 class SkillConverter:
     def __init__(self, config_path: str = None):
@@ -24,7 +27,7 @@ class SkillConverter:
                     config = yaml.safe_load(f)
                     return config if config else default_config
             except Exception as e:
-                print(f"Error loading config from {config_path}: {e}")
+                logger.exception("Error loading config from %s", config_path)
         
         return default_config
 
@@ -56,7 +59,9 @@ class SkillConverter:
             self._log_change(f"Generated placeholder description for skill '{original_name}' as it was missing.")
         
         # Ensure description includes "what it does AND when to use it"
-        if "what it does" not in description.lower() and "when to use it" not in description.lower():
+        description = str(description)
+        desc_lower = description[:ManusSkillValidator.MAX_DESCRIPTION_LENGTH].lower()
+        if "what it does" not in desc_lower and "when to use it" not in desc_lower:
             description = f"What it does: {description}. When to use it: This is a converted skill from ClawHub, review its content for usage instructions."
             self._log_change(f"Enhanced description for skill '{original_name}' to include 'what it does' and 'when to use it'.")
 
