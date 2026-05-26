@@ -1,6 +1,9 @@
 import requests
 import re
+import logging
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 class SkillFetcher:
     CLAW_HUB_RAW_GITHUB_URL = "https://raw.githubusercontent.com/openclaw/skills/main/skills/{author}/{name}/SKILL.md"
@@ -10,18 +13,18 @@ class SkillFetcher:
     def fetch_skill_from_github(self, author: str, name: str) -> str | None:
         url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=author, name=name)
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=(3.05, 10))
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.text
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching from GitHub: {e}")
+            logger.exception("Error fetching from GitHub")
             return None
 
     def fetch_skill_from_clawhub_website(self, name: str) -> str | None:
         """Scrapes SKILL.md content from clawhub.ai."""
         url = self.CLAW_HUB_WEBSITE_URL.format(name=name)
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=(3.05, 10))
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
@@ -37,7 +40,7 @@ class SkillFetcher:
 
             return None
         except requests.exceptions.RequestException as e:
-            print(f"Error scraping from clawhub.ai: {e}")
+            logger.exception("Error scraping from clawhub.ai")
             return None
 
     def discover_author_via_github(self, name: str) -> str | None:
@@ -45,7 +48,7 @@ class SkillFetcher:
         url = self.GITHUB_SEARCH_API_URL.format(name=name)
         headers = {"Accept": "application/vnd.github.v3+json"}
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers={**headers, "User-Agent": "claw2manus"}, timeout=(3.05, 10))
             response.raise_for_status()
             data = response.json()
             if data.get("total_count", 0) > 0:
@@ -55,7 +58,7 @@ class SkillFetcher:
                 if match:
                     return match.group("author")
         except Exception as e:
-            print(f"Error discovering author via GitHub: {e}")
+            logger.exception("Error discovering author via GitHub")
         return None
 
     def fetch_skill(self, skill_identifier: str) -> tuple[str | None, str | None]:
@@ -98,16 +101,16 @@ class SkillFetcher:
                     return skill_content, skill_name
             
             # Try to discover author via GitHub Search API
-            print(f"Author not specified for '{skill_identifier}'. Attempting to discover via GitHub API...")
+            logger.info("Author not specified for '%s'. Attempting to discover via GitHub API...", skill_identifier)
             discovered_author = self.discover_author_via_github(skill_identifier)
             if discovered_author:
-                print(f"Discovered author: {discovered_author}")
+                logger.info("Discovered author: %s", discovered_author)
                 skill_content = self.fetch_skill_from_github(discovered_author, skill_identifier)
                 if skill_content:
                     return skill_content, skill_identifier
 
             # Fallback to scraping if GitHub fails and no author was specified
-            print(f"Falling back to scraping from {self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier)}...")
+            logger.info("Falling back to scraping from %s...", self.CLAW_HUB_WEBSITE_URL.format(name=skill_identifier))
             skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
             if skill_content:
                 skill_name = skill_identifier
