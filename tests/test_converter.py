@@ -1,5 +1,6 @@
 import pytest
 import inspect
+import yaml
 from unittest.mock import patch, MagicMock
 from claw2manus.converter import SkillConverter
 
@@ -85,8 +86,6 @@ def test_validation_error_in_report(converter):
     assert any("Truncated skill name" in item for item in report)
 
 def test_malformed_yaml_frontmatter(converter):
-    import yaml
-
     clawhub_skill = inspect.cleandoc("""
         ---
         name: Test Skill

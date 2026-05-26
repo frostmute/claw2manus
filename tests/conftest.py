@@ -28,10 +28,11 @@ for module_name in mock_modules:
             def mock_dump(data, **kwargs):
                 res = ""
                 for k, v in data.items():
-                    if k == 'description' and not str(v).startswith("'"):
-                         res += f"{k}: '{v}'\n"
+                    val = str(v)
+                    if any(c in val for c in ":'\"[]{}#|>& "):
+                        res += f"{k}: '{val}'\n"
                     else:
-                         res += f"{k}: {v}\n"
+                        res += f"{k}: {val}\n"
                 return res
 
             m.safe_load.side_effect = mock_safe_load
