@@ -42,9 +42,6 @@ class ManusSkillValidator:
         try:
             # More robust splitting that handles various newline formats and trailing content
             parts = re.split(r'^---\s*$', skill_content, maxsplit=2, flags=re.MULTILINE)
-            # print(f"DEBUG: parts length: {len(parts)}")
-            # for i, p in enumerate(parts):
-            #     print(f"DEBUG: part {i}: '{p}'")
             # If it starts with ---, re.split will have an empty first element
             if len(parts) > 2 and parts[0].strip() == "":
                 frontmatter_str = parts[1]
@@ -75,7 +72,8 @@ class ManusSkillValidator:
 
             # New: Validate presence of required sections in body
             required_sections = ["How To Use", "Prerequisites", "Usage"]
-            found_section = any(section.lower() in body.lower() for section in required_sections)
+            body_lower = body.lower()
+            found_section = any(section.lower() in body_lower for section in required_sections)
             if not found_section:
                  errors.append("Body missing a usage-related section (e.g., '## How To Use' or '## Prerequisites').")
 
