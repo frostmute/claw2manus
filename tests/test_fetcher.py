@@ -1,54 +1,62 @@
-import sys
-from unittest.mock import MagicMock
-
-# Mock dependencies before importing the module under test
-mock_requests = MagicMock()
-sys.modules['requests'] = mock_requests
-sys.modules['bs4'] = MagicMock()
+import urllib.parse
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import patch
-from claw2manus.fetcher import SkillFetcher
-import urllib.parse
 
-def test_fetch_skill_from_github_escaping():
+from claw2manus.fetcher import SkillFetcher, _quote_path_segment
+
+
+@pytest.mark.parametrize(
+    "author,name",
+    [
+        ("user/repo", "skill#name"),
+        ("..", ".."),
+    ],
+)
+def test_fetch_skill_from_github_escaping(author, name):
     fetcher = SkillFetcher()
-    author = "user/repo"
-    name = "skill#name"
+    expected_author = _quote_path_segment(author)
+    expected_name = _quote_path_segment(name)
+    expected_url = (
+        "https://raw.githubusercontent.com/openclaw/skills/main/skills/"
+        f"{expected_author}/{expected_name}/SKILL.md"
+    )
 
-    mock_requests.get.return_value = MagicMock(status_code=200, text="content")
-    fetcher.fetch_skill_from_github(author, name)
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_get.return_value = MagicMock(status_code=200, text="content")
+        fetcher.fetch_skill_from_github(author, name)
 
-    expected_author = urllib.parse.quote(author, safe='')
-    expected_name = urllib.parse.quote(name, safe='')
-    expected_url = f"https://raw.githubusercontent.com/openclaw/skills/main/skills/{expected_author}/{expected_name}/SKILL.md"
+        mock_get.assert_called_once_with(expected_url, timeout=(3.05, 10))
 
-    args, kwargs = mock_requests.get.call_args
-    assert args[0] == expected_url
 
 def test_fetch_skill_from_clawhub_website_escaping():
     fetcher = SkillFetcher()
     name = "skill name?"
-
-    mock_requests.get.return_value = MagicMock(status_code=200, text="<html></html>")
-    fetcher.fetch_skill_from_clawhub_website(name)
-
-    expected_name = urllib.parse.quote(name, safe='')
+    expected_name = _quote_path_segment(name)
     expected_url = f"https://clawhub.ai/skills/{expected_name}"
 
-    args, kwargs = mock_requests.get.call_args
-    assert args[0] == expected_url
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_get.return_value = MagicMock(status_code=200, text="<html></html>")
+        with patch("claw2manus.fetcher.BeautifulSoup") as mock_soup:
+            mock_soup.return_value.find.return_value = None
+            fetcher.fetch_skill_from_clawhub_website(name)
+
+        mock_get.assert_called_once_with(expected_url, timeout=(3.05, 10))
+
 
 def test_discover_author_via_github_escaping():
     fetcher = SkillFetcher()
     name = "skill/name"
+    quoted_name = _quote_path_segment(name)
+    expected_url = SkillFetcher.GITHUB_SEARCH_API_URL.format(name=f'"{quoted_name}"')
 
-    mock_requests.get.return_value = MagicMock(status_code=200)
-    mock_requests.get.return_value.json.return_value = {"total_count": 0}
-    fetcher.discover_author_via_github(name)
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = {"total_count": 0}
+        mock_get.return_value = mock_response
+        fetcher.discover_author_via_github(name)
 
-    expected_name = urllib.parse.quote(name, safe='')
-    expected_url = f"https://api.github.com/search/code?q=repo:openclaw/skills+filename:SKILL.md+path:skills/*/{expected_name}"
-
-    args, kwargs = mock_requests.get.call_args
-    assert args[0] == expected_url
+        mock_get.assert_called_once()
+        args, kwargs = mock_get.call_args
+        assert args[0] == expected_url
+        assert kwargs["timeout"] == (3.05, 10)
