@@ -35,3 +35,16 @@ def test_validate_manus_skill():
     assert any("Invalid name format" in e for e in errors)
     assert any("no angle brackets" in e for e in errors)
     assert any("Body missing a usage-related section" in e for e in errors)
+
+
+@pytest.mark.parametrize(
+    "skill_content",
+    [
+        "",
+        "No frontmatter here.",
+        "---",
+    ],
+)
+def test_validate_manus_skill_missing_frontmatter(skill_content):
+    errors = ManusSkillValidator.validate_manus_skill(skill_content)
+    assert errors == ["SKILL.md must have YAML frontmatter delimited by '---'."]
