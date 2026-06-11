@@ -55,7 +55,7 @@ class SkillFetcher:
     def discover_author_via_github(self, name: str) -> str | None:
         """Uses GitHub Search API to find the author of a skill."""
         quoted_name = _quote_path_segment(name)
-        url = self.GITHUB_SEARCH_API_URL.format(name=f'"{quoted_name}"')
+        url = self.GITHUB_SEARCH_API_URL.format(name=quoted_name)
         headers = {"Accept": "application/vnd.github.v3+json"}
         try:
             response = requests.get(
