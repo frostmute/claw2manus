@@ -61,6 +61,15 @@ claw2manus fetch-and-convert pwnclaw-security-scan --output ./output/
 
 The tool will automatically attempt to discover the correct author using the GitHub API.
 
+You can also fetch nested `SKILL.md` files directly from GitHub. For example,
+TweetClaw publishes its OpenClaw X/Twitter automation skill in the repo:
+
+```bash
+claw2manus fetch-and-convert \
+  https://raw.githubusercontent.com/Xquik-dev/tweetclaw/master/skills/tweetclaw/SKILL.md \
+  --output ./output/
+```
+
 ### Validate an Existing Manus Skill
 
 Validate a `SKILL.md` file against Manus skill requirements.

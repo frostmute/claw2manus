@@ -1,9 +1,17 @@
+from __future__ import annotations
+
 import logging
 import re
 import urllib.parse
 
 import requests
 from bs4 import BeautifulSoup
+
+try:
+    from requests.exceptions import RequestException
+except (AttributeError, ImportError, ModuleNotFoundError):
+    class RequestException(Exception):
+        pass
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +26,61 @@ class SkillFetcher:
     CLAW_HUB_WEBSITE_URL = "https://clawhub.ai/skills/{name}"
     GITHUB_SEARCH_API_URL = "https://api.github.com/search/code?q=repo:openclaw/skills+filename:SKILL.md+path:skills/*/{name}"
 
-    def fetch_skill_from_github(self, author: str, name: str) -> str | None:
-        quoted_author = _quote_path_segment(author)
-        quoted_name = _quote_path_segment(name)
-        url = self.CLAW_HUB_RAW_GITHUB_URL.format(author=quoted_author, name=quoted_name)
+    def _skill_name_from_path(self, path: str) -> str | None:
+        parts = [part for part in path.split("/") if part]
+        if not parts or parts[-1].lower() != "skill.md":
+            return None
+        if len(parts) >= 2:
+            return parts[-2]
+        return None
+
+    def _raw_github_url_from_identifier(
+        self, skill_identifier: str
+    ) -> tuple[str, str] | None:
+        parsed = urllib.parse.urlparse(skill_identifier)
+        netloc = parsed.netloc.lower()
+        path_parts = [part for part in parsed.path.split("/") if part]
+
+        if netloc == "raw.githubusercontent.com" and len(path_parts) >= 5:
+            skill_name = self._skill_name_from_path("/".join(path_parts[3:]))
+            if skill_name:
+                return skill_identifier, skill_name
+
+        if netloc in {"github.com", "www.github.com"} and len(path_parts) >= 5:
+            owner, repo, marker, ref, *skill_path = path_parts
+            if marker != "blob":
+                return None
+            skill_name = self._skill_name_from_path("/".join(skill_path))
+            if not skill_name:
+                return None
+            raw_path = "/".join(
+                urllib.parse.quote(part, safe="")
+                for part in [owner, repo, ref, *skill_path]
+            )
+            return f"https://raw.githubusercontent.com/{raw_path}", skill_name
+
+        return None
+
+    def fetch_skill_from_raw_github_url(self, url: str) -> str | None:
         try:
             response = requests.get(url, timeout=(3.05, 10))
             response.raise_for_status()
             return response.text
-        except requests.exceptions.RequestException:
+        except RequestException:
+            logger.exception("Error fetching raw GitHub skill")
+            return None
+
+    def fetch_skill_from_github(self, author: str, name: str) -> str | None:
+        quoted_author = _quote_path_segment(author)
+        quoted_name = _quote_path_segment(name)
+        url = self.CLAW_HUB_RAW_GITHUB_URL.format(
+            author=quoted_author, name=quoted_name
+        )
+        try:
+            response = requests.get(url, timeout=(3.05, 10))
+            response.raise_for_status()
+            return response.text
+        except RequestException:
             logger.exception("Error fetching from GitHub")
             return None
 
@@ -48,7 +102,7 @@ class SkillFetcher:
                 return code_block.get_text()
 
             return None
-        except requests.exceptions.RequestException:
+        except RequestException:
             logger.exception("Error scraping from clawhub.ai")
             return None
 
@@ -82,18 +136,18 @@ class SkillFetcher:
         skill_content = None
         skill_name = None
 
-        if ("github.com" in skill_identifier or "githubusercontent.com" in skill_identifier) and "SKILL.md" in skill_identifier:
-            match = re.search(
-                r"skills/(?P<author>[^/]+)/(?P<name>[^/]+)/SKILL.md",
-                skill_identifier,
-            )
-            if match:
-                author = match.group("author")
-                name = match.group("name")
-                skill_content = self.fetch_skill_from_github(author, name)
-                skill_name = name
-                if skill_content:
-                    return skill_content, skill_name
+        is_github_skill_url = (
+            "github.com" in skill_identifier or "githubusercontent.com" in skill_identifier
+        ) and "skill.md" in skill_identifier.lower()
+        if is_github_skill_url:
+            github_target = self._raw_github_url_from_identifier(skill_identifier)
+            if not github_target:
+                return None, None
+            raw_url, skill_name = github_target
+            skill_content = self.fetch_skill_from_raw_github_url(raw_url)
+            if skill_content:
+                return skill_content, skill_name
+            return None, None
 
         if "/" in skill_identifier:
             author, name = skill_identifier.split("/", 1)
