@@ -7,7 +7,6 @@ description: 'What it does: Captures learnings, errors, and corrections to enabl
   realizes its knowledge is outdated or incorrect, (6) A better approach is discovered
   for a recurring task. Also review learnings before major tasks.. When to use it:
   This is a converted skill from ClawHub, review its content for usage instructions.'
-metadata: null
 ---
 
 # Self-Improvement Skill
@@ -43,8 +42,8 @@ If you want automatic reminders or setup assistance, use the opt-in hook workflo
 | Found better approach | Log to `.learnings/LEARNINGS.md` with category `best_practice` |
 | Simplify/Harden recurring patterns | Log/update `.learnings/LEARNINGS.md` with `Source: simplify-and-harden` and a stable `Pattern-Key` |
 | Similar to existing entry | Link with **See Also**, consider priority bump |
-| Broadly applicable learning | Promote to `soul.md (Manus equivalent for core behavioral patterns)`, `Manus subtask concepts or agent planning phases`, and/or `.github/copilot-instructions.md` |
-| Workflow improvements | Promote to `Manus subtask concepts or agent planning phases` (OpenClaw workspace) |
+| Broadly applicable learning | Promote to `soul.md`, `subtasks.md`, and/or `.github/copilot-instructions.md` |
+| Workflow improvements | Promote to `subtasks.md` (OpenClaw workspace) |
 | Tool gotchas | Promote to `TOOLS.md` (OpenClaw workspace) |
 | Behavioral patterns | Promote to `SOUL.md` (OpenClaw workspace) |
 
@@ -72,7 +71,7 @@ OpenClaw injects these files into every session:
 
 ```
 /home/ubuntu/workspace/
-├── Manus subtask concepts or agent planning phases
+├── subtasks.md
 ├── SOUL.md
 ├── TOOLS.md
 ├── MEMORY.md
@@ -91,7 +90,7 @@ When learnings prove broadly applicable, promote them to workspace files:
 | Learning Type | Promote To | Example |
 | --- | --- | --- |
 | Behavioral patterns | `SOUL.md` | "Be concise, avoid disclaimers" |
-| Workflow improvements | `Manus subtask concepts or agent planning phases` | "Spawn sub-agents for long tasks" |
+| Workflow improvements | `subtasks.md` | "Spawn sub-agents for long tasks" |
 | Tool gotchas | `TOOLS.md` | "Git push needs auth configured first" |
 
 ### Inter-Session Communication
