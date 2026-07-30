@@ -1,8 +1,29 @@
 import sys
 from unittest.mock import MagicMock
 
-# Mock modules that are not available in the environment to allow tests to run
-mock_modules = ['yaml', 'markdown', 'requests', 'bs4']
+# Mock modules that are not available in the environment to allow tests to run.
+# When a real implementation is importable (e.g. in CI or a developer machine
+# with the test extra installed), we leave it alone — the mock is only a
+# fallback for minimal environments where pytest is somehow available but the
+# runtime deps aren't.
+def _try_import(name):
+    try:
+        __import__(name)
+        return True
+    except ImportError:
+        return False
+
+
+mock_modules = []
+if not _try_import("yaml"):
+    mock_modules.append("yaml")
+if not _try_import("markdown"):
+    mock_modules.append("markdown")
+if not _try_import("requests"):
+    mock_modules.append("requests")
+if not _try_import("bs4"):
+    mock_modules.append("bs4")
+
 for module_name in mock_modules:
     if module_name not in sys.modules:
         m = MagicMock()

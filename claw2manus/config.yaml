@@ -17,3 +17,36 @@ stdio_patterns:
   - pattern: '(\b(?:psql|mysql|sqlite3|mongo|redis-cli)\b)'
     category: "Database clients"
     mcp_suggestion: "Strongly recommend using an MCP server (e.g., `mcp-server-postgres`, `mcp-server-mysql`) for secure and structured database access."
+
+# Body-transformation rules. Each rule is applied in order to the SKILL.md
+# body via regex.sub. The pattern may use a named group "(?P<match>...)" or
+# numbered groups; the replacement can be a literal string with backreferences
+# (e.g. "\\1", "\\g<match>") or a callable. The `log` template is added to the
+# conversion report when at least one replacement was made. Set `boundary: true`
+# to add leading and trailing look-around guards so the pattern only matches at
+# identifier boundaries (used to keep "my-CLAUDE.md" from being rewritten).
+body_rules:
+  - id: openclaw-workspace-path
+    pattern: '~\/\.openclaw\/workspace\/'
+    replacement: '/home/ubuntu/workspace/'
+    log: "Replaced OpenClaw workspace path with Manus equivalent."
+  - id: openclaw-skills-path
+    pattern: '~\/\.openclaw\/skills\/'
+    replacement: '/home/ubuntu/skills/'
+    log: "Replaced OpenClaw skills path with Manus equivalent."
+  - id: clawdhub-install
+    pattern: 'clawdhub install [a-zA-Z0-9-]+'
+    replacement: 'Manus: To install skills, place them in `/home/ubuntu/skills/` directory.'
+    log: "Replaced clawdhub install command with Manus skill installation instructions."
+  - id: openclaw-hooks-enable
+    pattern: 'openclaw hooks enable'
+    replacement: 'Manus: Hooks are not directly supported. Implement similar functionality using file watchers or scheduled tasks.'
+    log: "Replaced openclaw hooks enable with Manus note about hook parity."
+  - id: claude-md-to-soul-md
+    pattern: '(?<![A-Za-z0-9_.-])CLAUDE\.md(?![A-Za-z0-9_.])'
+    replacement: soul.md
+    log: "Replaced CLAUDE.md with soul.md ({count} occurrence{plural})."
+  - id: agents-md-to-subtasks-md
+    pattern: '(?<![A-Za-z0-9_.-])AGENTS\.md(?![A-Za-z0-9_.])'
+    replacement: subtasks.md
+    log: "Replaced AGENTS.md with subtasks.md ({count} occurrence{plural})."
