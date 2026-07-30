@@ -1,3 +1,9 @@
+---
+layout: default
+title: Conversion Logic
+nav_order: 2
+---
+
 # Conversion Logic Overview
 
 `claw2manus` runs every `SKILL.md` through the same five stages. Each stage
