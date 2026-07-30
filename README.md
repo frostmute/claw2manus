@@ -18,7 +18,7 @@
 To install `claw2manus`, clone the repository and install it using `uv` (recommended) or `pip`:
 
 ```bash
-git clone https://github.com/manus-ai/claw2manus.git
+git clone https://github.com/frostmute/claw2manus.git
 cd claw2manus
 uv venv
 source .venv/bin/activate
