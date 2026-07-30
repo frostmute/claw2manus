@@ -1,7 +1,9 @@
 import argparse
+import difflib
 import os
 import shutil
 import glob
+import re
 import logging
 from claw2manus.converter import SkillConverter
 from claw2manus.fetcher import SkillFetcher
@@ -21,6 +23,30 @@ def _print_conversion_report(report: list[str]) -> None:
     else:
         print("No specific changes noted during conversion.")
     print("-------------------------")
+
+
+def _print_diff(input_path: str, input_text: str, output_text: str) -> None:
+    """Print a unified diff between the input SKILL.md and the converted output.
+
+    Useful when reviewing what the converter actually changed — `--dry-run`
+    shows the full output, but a diff highlights exactly which lines moved.
+    """
+    from_name = os.path.basename(input_path) if input_path else "input.md"
+    diff = difflib.unified_diff(
+        input_text.splitlines(keepends=True),
+        output_text.splitlines(keepends=True),
+        fromfile=f"a/{from_name}",
+        tofile=f"b/{from_name}",
+        lineterm="",
+    )
+    lines = list(diff)
+    if not lines:
+        print("\nNo textual changes (only frontmatter/reporting).")
+        return
+    print("\n--- Unified Diff (input -> output) ---")
+    for line in lines:
+        print(line)
+    print("--------------------------------------")
 
 def save_conversion_results(output_dir, skill_name, content, report, original_path=None):
     os.makedirs(output_dir, exist_ok=True)
@@ -51,26 +77,30 @@ def save_conversion_results(output_dir, skill_name, content, report, original_pa
 
     return skill_path
 
-def convert_skill(input_path: str, output_dir: str, dry_run: bool, interactive: bool = False):
+def convert_skill(input_path: str, output_dir: str, dry_run: bool, interactive: bool = False, show_diff: bool = False):
     converter = SkillConverter()
-    
+
 
     with open(input_path, "r") as f:
         clawhub_skill_content = f.read()
 
     manus_skill_content, report = converter.convert(
-        clawhub_skill_content, 
-        interactive=interactive, 
+        clawhub_skill_content,
+        interactive=interactive,
         on_unresolved_tool=on_unresolved_tool_cli if interactive else None
     )
 
     _print_conversion_report(report)
+
+    if show_diff:
+        _print_diff(input_path, clawhub_skill_content, manus_skill_content)
 
     if not dry_run:
         # derive skill name from directory or file name
         skill_name = os.path.basename(os.path.dirname(input_path)) or "converted-skill"
         if not os.path.dirname(input_path):
              skill_name = input_path.replace(".md", "")
+        skill_name = _safe_dir_name(skill_name)
 
         output_skill_dir = os.path.join(output_dir, skill_name)
         save_conversion_results(output_skill_dir, skill_name, manus_skill_content, report, input_path)
@@ -80,31 +110,75 @@ def convert_skill(input_path: str, output_dir: str, dry_run: bool, interactive: 
         print(manus_skill_content)
         print("---------------------------------")
 
+def _safe_dir_name(name: str) -> str:
+    """Sanitize a string for use as an output directory name.
+
+    Strips path separators and traversal sequences so a malformed skill_name
+    (e.g. derived from a fetched URL) cannot escape the output directory.
+    Returns 'converted-skill' when nothing usable remains.
+    """
+    # Replace path separators and traversal characters with '-'
+    cleaned = re.sub(r"[\\/]+", "-", name)
+    cleaned = cleaned.replace("..", "-")
+    cleaned = cleaned.strip().strip(".-")
+    if not cleaned or not re.match(r"^[A-Za-z0-9._-]+$", cleaned):
+        return "converted-skill"
+    return cleaned
+
+
+def _skill_name_from_path(skill_file: str, input_dir: str) -> str:
+    """Derive a stable, collision-resistant skill name from a SKILL.md path.
+
+    Uses the path relative to input_dir so multiple skills under a single
+    parent directory (e.g. input/author/{a,b}/SKILL.md) don't overwrite each
+    other. Falls back to the immediate parent directory name if input_dir
+    isn't a prefix of skill_file.
+    """
+    abs_input = os.path.abspath(input_dir)
+    abs_skill = os.path.abspath(skill_file)
+    try:
+        rel = os.path.relpath(abs_skill, abs_input)
+    except ValueError:
+        return os.path.basename(os.path.dirname(abs_skill)) or "converted-skill"
+    # If input_dir isn't a prefix of skill_file, relpath starts with '..'.
+    # Fall back to the immediate parent directory's name so we don't emit
+    # traversal sequences as part of a derived name.
+    if rel.split(os.sep)[0] == "..":
+        return os.path.basename(os.path.dirname(abs_skill)) or "converted-skill"
+    parts = rel.split(os.sep)
+    # drop the trailing SKILL.md
+    parts = parts[:-1]
+    if not parts:
+        return os.path.basename(skill_file).replace(".md", "") or "converted-skill"
+    # Use the full relative path joined with '-' to preserve disambiguation
+    return "-".join(parts) if len(parts) > 1 else parts[0]
+
+
 def convert_all_skills(input_dir: str, output_dir: str, interactive: bool = False):
     # Find all SKILL.md files recursively
     skill_files = glob.glob(os.path.join(input_dir, "**/SKILL.md"), recursive=True)
-    
+
     if not skill_files:
         print(f"No SKILL.md files found in {input_dir}")
         return
 
     print(f"Found {len(skill_files)} skills to convert.")
-    
+
     converter = SkillConverter()
     for skill_file in skill_files:
         print(f"\nProcessing: {skill_file}")
-        skill_name = os.path.basename(os.path.dirname(skill_file))
-        
+        skill_name = _skill_name_from_path(skill_file, input_dir)
+
 
         with open(skill_file, "r") as f:
             content = f.read()
-        
+
         manus_content, report = converter.convert(
-            content, 
+            content,
             interactive=interactive,
             on_unresolved_tool=on_unresolved_tool_cli if interactive else None
         )
-        
+
         output_skill_dir = os.path.join(output_dir, skill_name)
         save_conversion_results(output_skill_dir, skill_name, manus_content, report, skill_file)
         print(f"Converted {skill_name} to {output_skill_dir}")
@@ -126,6 +200,7 @@ def fetch_and_convert_skill(skill_identifier: str, output_dir: str, interactive:
         skill_name = skill_identifier.split("/")[-1].replace(".md", "").replace("SKILL", "").strip("-")
         if not skill_name:
             skill_name = "fetched-skill"
+    skill_name = _safe_dir_name(skill_name)
 
     manus_skill_content, report = converter.convert(
         clawhub_skill_content,
@@ -174,8 +249,9 @@ def main():
     convert_parser.add_argument("input_path", help="Path to the ClawHub SKILL.md file.")
     convert_parser.add_argument("--output", "-o", default=".", help="Output directory for the converted skill.")
     convert_parser.add_argument("--dry-run", action="store_true", help="Show conversion report and output without saving.")
+    convert_parser.add_argument("--diff", action="store_true", dest="show_diff", help="Show a unified diff between input and output (in addition to the report).")
     convert_parser.add_argument("--interactive", "-i", action="store_true", help="Enable interactive tool mapping.")
-    convert_parser.set_defaults(func=lambda args: convert_skill(args.input_path, args.output, args.dry_run, args.interactive))
+    convert_parser.set_defaults(func=lambda args: convert_skill(args.input_path, args.output, args.dry_run, args.interactive, args.show_diff))
 
     # Convert-all command
     convert_all_parser = subparsers.add_parser("convert-all", help="Convert all SKILL.md files in a directory.")
