@@ -37,6 +37,10 @@ Changelog = "https://github.com/frostmute/claw2manus/releases"
 [project.scripts]
 claw2manus = "claw2manus.cli:main"
 
+[tool.setuptools.package-data]
+"claw2manus" = ["config.yaml"]
+"" = ["docs/*.md", "docs/*.png", "README.md", "CHANGELOG.md"]
+
 # --- Tool configuration ---
 
 [tool.ruff]

@@ -14,6 +14,8 @@ and a change report you can actually audit.
 [![Tests](https://img.shields.io/badge/tests-92%20passing-brightgreen?style=flat-square)](tests/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-yellow?style=flat-square)](.pre-commit-config.yaml)
 
+<img src="docs/hero.png" alt="claw2manus — a claw cradling the moon over a cascade of data" width="520" />
+
 </div>
 
 ---
