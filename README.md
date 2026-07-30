@@ -11,6 +11,7 @@ and a change report you can actually audit.
 [![CI](https://img.shields.io/github/actions/workflow/status/frostmute/claw2manus/test.yml?branch=main&label=tests&style=flat-square)](https://github.com/frostmute/claw2manus/actions)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-frostmute.github.io-blue?style=flat-square)](https://frostmute.github.io/claw2manus/)
 [![Tests](https://img.shields.io/badge/tests-92%20passing-brightgreen?style=flat-square)](tests/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-yellow?style=flat-square)](.pre-commit-config.yaml)
 
@@ -273,6 +274,7 @@ See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for the full contributor guide.
 
 ## Documentation index
 
+- **[Documentation site](https://frostmute.github.io/claw2manus/)** — rendered with `jekyll-theme-console`, dark style
 - [Conversion Logic](docs/CONVERSION.md) — what each stage of the converter does
 - [Configuration Guide](docs/CONFIGURATION.md) — `config.yaml` schema and examples
 - [Development Guide](docs/DEVELOPMENT.md) — setup, project layout, testing
