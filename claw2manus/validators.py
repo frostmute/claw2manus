@@ -19,8 +19,10 @@ class ManusSkillValidator:
 
     @staticmethod
     def validate_description(description: str) -> bool:
-        """Validates if the description is within max length and contains no angle brackets."""
+        """Validates if the description is non-empty, within max length, and contains no angle brackets."""
         if not isinstance(description, str):
+            return False
+        if not description.strip():
             return False
         if len(description) > ManusSkillValidator.MAX_DESCRIPTION_LENGTH:
             return False
@@ -64,7 +66,10 @@ class ManusSkillValidator:
             if 'description' not in frontmatter:
                 errors.append("Frontmatter missing 'description' field.")
             elif not ManusSkillValidator.validate_description(frontmatter['description']):
-                errors.append(f"Invalid description: '{frontmatter['description']}'. Max {ManusSkillValidator.MAX_DESCRIPTION_LENGTH} chars, no angle brackets.")
+                errors.append(
+                    f"Invalid description: '{frontmatter['description']}'. "
+                    f"Must be non-empty, max {ManusSkillValidator.MAX_DESCRIPTION_LENGTH} chars, no angle brackets."
+                )
 
             if not ManusSkillValidator.validate_frontmatter_fields(frontmatter):
                 unsupported_fields = set(frontmatter.keys()) - ManusSkillValidator.ALLOWED_FRONTMATTER_FIELDS
