@@ -1,3 +1,9 @@
+---
+layout: default
+title: Configuration
+nav_order: 3
+---
+
 # Configuration Guide
 
 `claw2manus` reads `claw2manus/config.yaml` from the installed package by

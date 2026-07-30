@@ -1,3 +1,9 @@
+---
+layout: default
+title: Development
+nav_order: 4
+---
+
 # Development Guide
 
 For contributors extending or modifying `claw2manus`.

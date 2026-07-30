@@ -1,0 +1,43 @@
+title: claw2manus Documentation
+description: Convert ClawHub SKILL.md files into Manus-compatible skills.
+baseurl: /claw2manus
+url: https://frostmute.github.io
+remote_theme: b2a3e8/jekyll-theme-console
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+
+# Console-style theme defaults match the make-it-rain docs site.
+style: dark
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+permalink: /:title
+
+# Top-level nav. The order here drives the order of the menu items.
+header_pages:
+  - index.md
+  - CONVERSION.md
+  - CONFIGURATION.md
+  - DEVELOPMENT.md
+
+# Footer shown at the bottom of every page.
+footer: |
+  <span>
+    <a href="https://github.com/frostmute/claw2manus">claw2manus</a>
+    &middot; documentation built with
+    <a href="https://github.com/b2a3e8/jekyll-theme-console">jekyll-theme-console</a>
+  </span>
+
+# Hide the workspace files that aren't meant for end-users.
+exclude:
+  - .jekyll-cache/
+  - .sass-cache/
+  - node_modules/
+  - "*.md.bak"
+  - "*.orig"
+  - tests/
