@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claw2manus"
+version = "0.1.0"
+description = "Convert ClawHub (OpenClaw) SKILL.md skills into Manus-compatible skills."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "frostmute", email = "frostmute@users.noreply.github.com" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+    "PyYAML>=5.4",
+    "requests>=2.25",
+    "beautifulsoup4>=4.9",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7",
+]
+
+[project.urls]
+Homepage = "https://github.com/frostmute/claw2manus"
+Issues = "https://github.com/frostmute/claw2manus/issues"
+Changelog = "https://github.com/frostmute/claw2manus/releases"
+
+[project.scripts]
+claw2manus = "claw2manus.cli:main"
+
+# --- Tool configuration ---
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+    "build",
+    "dist",
+    ".venv",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+extend-select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+]
+ignore = [
+    "E501",  # line length handled by formatter
+    "B008",  # function call in default argument (CLI patterns)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]  # assert False() pattern is fine in tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-ra", "--strict-markers"]
