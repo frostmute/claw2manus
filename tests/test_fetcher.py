@@ -390,3 +390,89 @@ def test_fetch_skill_not_found():
 
         assert content is None
         assert name is None
+
+
+# --- GITHUB_TOKEN support ---
+
+
+def test_no_github_token_no_auth_header(monkeypatch):
+    """Without GITHUB_TOKEN, requests must be issued with no Authorization header."""
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    fetcher = SkillFetcher()
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "content"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        fetcher.fetch_skill_from_github("author", "skill")
+
+        args, kwargs = mock_get.call_args
+        # Either no headers=, or a headers dict with no Authorization
+        assert "headers" not in kwargs or "Authorization" not in (kwargs.get("headers") or {})
+
+
+def test_github_token_attaches_auth_header(monkeypatch):
+    """With GITHUB_TOKEN set, fetch_skill_from_github sends an Authorization header."""
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_testtoken12345")
+    fetcher = SkillFetcher()
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "content"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        fetcher.fetch_skill_from_github("author", "skill")
+
+        args, kwargs = mock_get.call_args
+        assert kwargs.get("headers", {}).get("Authorization") == "Bearer ghp_testtoken12345"
+
+
+def test_github_token_empty_string_no_header(monkeypatch):
+    """An empty GITHUB_TOKEN should be treated as unauthenticated."""
+    monkeypatch.setenv("GITHUB_TOKEN", "")
+    fetcher = SkillFetcher()
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "content"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        fetcher.fetch_skill_from_github("author", "skill")
+
+        args, kwargs = mock_get.call_args
+        assert "headers" not in kwargs or "Authorization" not in kwargs.get("headers", {})
+
+
+def test_github_token_used_for_search_api(monkeypatch):
+    """discover_author_via_github should also send the Authorization header."""
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_searchtest")
+    fetcher = SkillFetcher()
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"total_count": 0}
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        fetcher.discover_author_via_github("skill")
+
+        args, kwargs = mock_get.call_args
+        assert kwargs.get("headers", {}).get("Authorization") == "Bearer ghp_searchtest"
+
+
+def test_github_token_used_for_raw_github_url(monkeypatch):
+    """Raw-GitHub fetches should also use the token when set."""
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_rawtest")
+    fetcher = SkillFetcher()
+    with patch("claw2manus.fetcher.requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.text = "content"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        fetcher.fetch_skill_from_raw_github_url(
+            "https://raw.githubusercontent.com/org/repo/main/skills/demo/SKILL.md"
+        )
+
+        args, kwargs = mock_get.call_args
+        assert kwargs.get("headers", {}).get("Authorization") == "Bearer ghp_rawtest"

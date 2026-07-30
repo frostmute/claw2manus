@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import urllib.parse
 
@@ -14,6 +15,20 @@ except (AttributeError, ImportError, ModuleNotFoundError):
         pass
 
 logger = logging.getLogger(__name__)
+
+
+def _github_auth_headers() -> dict[str, str]:
+    """Headers for GitHub API calls.
+
+    When GITHUB_TOKEN is set in the environment, attach a Bearer token so
+    the request uses the authenticated rate limit (5,000/hr vs the
+    unauthenticated 60/hr). Without a token we send nothing extra, so
+    unauthenticated behavior is preserved.
+    """
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {}
 
 
 def _quote_path_segment(value: str) -> str:
@@ -63,7 +78,11 @@ class SkillFetcher:
 
     def fetch_skill_from_raw_github_url(self, url: str) -> str | None:
         try:
-            response = requests.get(url, timeout=(3.05, 10))
+            kwargs = {"timeout": (3.05, 10)}
+            auth = _github_auth_headers()
+            if auth:
+                kwargs["headers"] = auth
+            response = requests.get(url, **kwargs)
             response.raise_for_status()
             return response.text
         except RequestException:
@@ -77,7 +96,11 @@ class SkillFetcher:
             author=quoted_author, name=quoted_name
         )
         try:
-            response = requests.get(url, timeout=(3.05, 10))
+            kwargs = {"timeout": (3.05, 10)}
+            auth = _github_auth_headers()
+            if auth:
+                kwargs["headers"] = auth
+            response = requests.get(url, **kwargs)
             response.raise_for_status()
             return response.text
         except RequestException:
@@ -110,11 +133,15 @@ class SkillFetcher:
         """Uses GitHub Search API to find the author of a skill."""
         quoted_name = _quote_path_segment(name)
         url = self.GITHUB_SEARCH_API_URL.format(name=quoted_name)
-        headers = {"Accept": "application/vnd.github.v3+json"}
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "claw2manus",
+            **_github_auth_headers(),
+        }
         try:
             response = requests.get(
                 url,
-                headers={**headers, "User-Agent": "claw2manus"},
+                headers=headers,
                 timeout=(3.05, 10),
             )
             response.raise_for_status()
