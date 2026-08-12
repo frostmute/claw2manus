@@ -124,7 +124,7 @@ class SkillFetcher:
                 match = re.search(r"skills/(?P<author>[^/]+)/", path)
                 if match:
                     return match.group("author")
-        except Exception:
+        except (RequestException, ValueError, KeyError, IndexError):
             logger.exception("Error discovering author via GitHub")
         return None
 
