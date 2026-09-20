@@ -245,7 +245,7 @@ def test_discover_author_via_github_not_found():
 def test_discover_author_via_github_exception():
     fetcher = SkillFetcher()
     with patch("claw2manus.fetcher.requests.get") as mock_get:
-        mock_get.side_effect = Exception("Some error")
+        mock_get.side_effect = RequestException("Some error")
 
         author = fetcher.discover_author_via_github("skill2")
         assert author is None
