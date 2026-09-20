@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-20
+
 ### Added
 - `convert --diff` flag for unified-diff review of a single conversion.
 - Plugin-style `body_rules` in `config.yaml` so users can add their own
@@ -51,5 +53,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Conversion-report generation (`CONVERSION_REPORT.md`)
 - Bundled `config.yaml` with tool replacements and stdio patterns
 
-[Unreleased]: https://github.com/frostmute/claw2manus/compare/main...HEAD
+[Unreleased]: https://github.com/frostmute/claw2manus/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/frostmute/claw2manus/releases/tag/0.2.0
 [0.1.0]: https://github.com/frostmute/claw2manus/releases/tag/v0.1.0

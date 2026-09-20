@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claw2manus"
-version = "0.1.0"
+version = "0.2.0"
 description = "Convert ClawHub (OpenClaw) SKILL.md skills into Manus-compatible skills."
 readme = "README.md"
 license = { text = "MIT" }

@@ -58,7 +58,7 @@ GitHub fetching, and a change report you can actually audit.
 
 | | |
 | --- | --- |
-| Version | 0.1.0 |
+| Version | 0.2.0 |
 | Python | 3.10 · 3.11 · 3.12 |
 | Tests | 92 passing |
 | CI | GitHub Actions on every push and tag |
