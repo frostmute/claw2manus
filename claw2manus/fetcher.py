@@ -11,8 +11,10 @@ from bs4 import BeautifulSoup
 try:
     from requests.exceptions import RequestException
 except (AttributeError, ImportError, ModuleNotFoundError):
+
     class RequestException(Exception):
         pass
+
 
 logger = logging.getLogger(__name__)
 
@@ -155,62 +157,74 @@ class SkillFetcher:
             logger.exception("Error discovering author via GitHub")
         return None
 
+    def _fetch_by_github_url(
+        self, skill_identifier: str
+    ) -> tuple[str | None, str | None]:
+        github_target = self._raw_github_url_from_identifier(skill_identifier)
+        if not github_target:
+            return None, None
+        raw_url, skill_name = github_target
+        skill_content = self.fetch_skill_from_raw_github_url(raw_url)
+        if skill_content:
+            return skill_content, skill_name
+        return None, None
+
+    def _fetch_by_author_and_name(
+        self, skill_identifier: str
+    ) -> tuple[str | None, str | None]:
+        author, name = skill_identifier.split("/", 1)
+        skill_content = self.fetch_skill_from_github(author, name)
+        if skill_content:
+            return skill_content, name
+        return None, None
+
+    def _fetch_by_name_with_fallback(
+        self, skill_identifier: str
+    ) -> tuple[str | None, str | None]:
+        common_authors = ["openclaw", "peterskoett"]
+        for author in common_authors:
+            skill_content = self.fetch_skill_from_github(author, skill_identifier)
+            if skill_content:
+                return skill_content, skill_identifier
+
+        logger.info(
+            "Author not specified for '%s'. Attempting to discover via GitHub API...",
+            skill_identifier,
+        )
+        discovered_author = self.discover_author_via_github(skill_identifier)
+        if discovered_author:
+            logger.info("Discovered author: %s", discovered_author)
+            skill_content = self.fetch_skill_from_github(
+                discovered_author, skill_identifier
+            )
+            if skill_content:
+                return skill_content, skill_identifier
+
+        quoted_name = _quote_path_segment(skill_identifier)
+        logger.info(
+            "Falling back to scraping from %s...",
+            self.CLAW_HUB_WEBSITE_URL.format(name=quoted_name),
+        )
+        skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
+        if skill_content:
+            return skill_content, skill_identifier
+
+        return None, None
+
     def fetch_skill(self, skill_identifier: str) -> tuple[str | None, str | None]:
         """
         Fetches a skill, trying GitHub first, then falling back to scraping.
         Returns (skill_content, skill_name).
         """
-        skill_content = None
-        skill_name = None
-
         is_github_skill_url = (
-            "github.com" in skill_identifier or "githubusercontent.com" in skill_identifier
+            "github.com" in skill_identifier
+            or "githubusercontent.com" in skill_identifier
         ) and "skill.md" in skill_identifier.lower()
+
         if is_github_skill_url:
-            github_target = self._raw_github_url_from_identifier(skill_identifier)
-            if not github_target:
-                return None, None
-            raw_url, skill_name = github_target
-            skill_content = self.fetch_skill_from_raw_github_url(raw_url)
-            if skill_content:
-                return skill_content, skill_name
-            return None, None
+            return self._fetch_by_github_url(skill_identifier)
 
         if "/" in skill_identifier:
-            author, name = skill_identifier.split("/", 1)
-            skill_content = self.fetch_skill_from_github(author, name)
-            skill_name = name
-            if skill_content:
-                return skill_content, skill_name
-        else:
-            common_authors = ["openclaw", "peterskoett"]
-            for author in common_authors:
-                skill_content = self.fetch_skill_from_github(author, skill_identifier)
-                if skill_content:
-                    skill_name = skill_identifier
-                    return skill_content, skill_name
+            return self._fetch_by_author_and_name(skill_identifier)
 
-            logger.info(
-                "Author not specified for '%s'. Attempting to discover via GitHub API...",
-                skill_identifier,
-            )
-            discovered_author = self.discover_author_via_github(skill_identifier)
-            if discovered_author:
-                logger.info("Discovered author: %s", discovered_author)
-                skill_content = self.fetch_skill_from_github(
-                    discovered_author, skill_identifier
-                )
-                if skill_content:
-                    return skill_content, skill_identifier
-
-            quoted_name = _quote_path_segment(skill_identifier)
-            logger.info(
-                "Falling back to scraping from %s...",
-                self.CLAW_HUB_WEBSITE_URL.format(name=quoted_name),
-            )
-            skill_content = self.fetch_skill_from_clawhub_website(skill_identifier)
-            if skill_content:
-                skill_name = skill_identifier
-                return skill_content, skill_name
-
-        return None, None
+        return self._fetch_by_name_with_fallback(skill_identifier)
